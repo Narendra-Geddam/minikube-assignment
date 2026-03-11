@@ -3,5 +3,6 @@
 **/terraform.tfstate
 **/terraform.tfstate.backup
 *.tfvars
+!infra/terraform.tfvars
 *.pem
 infra/inventory.ini
