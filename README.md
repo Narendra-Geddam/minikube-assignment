@@ -57,12 +57,23 @@ The pipeline provisions the instance, uses the Terraform-generated inventory, an
 
 ## Dynamic inventory
 
-Ansible uses `ansible/inventory.py` to discover the EC2 instance by tag.
+We use a small Python script (`ansible/inventory.py`) to discover the EC2 instance by tag.
 Defaults:
 
 - Tag filter: `Project=minikube-host`
 - Region: `eu-north-1`
 - User: `ec2-user`
+
+Why not the `amazon.aws.aws_ec2` plugin?
+
+- The plugin is standard, but it requires the `amazon.aws` collection to be installed and loaded correctly on the Jenkins agent.
+- In this environment the plugin failed to load reliably, so the pipeline could not resolve hosts.
+- The custom script is small, explicit, and only depends on `boto3`, which is already required for AWS access.
+
+Is this standard?
+
+- Yes. Custom dynamic inventory scripts are a supported and common Ansible pattern.
+- If you want to switch back to the plugin later, add the `amazon.aws` collection and replace `ansible/ansible.cfg` to point at a `aws_ec2.yaml` inventory.
 
 ## Defaults in `infra/terraform.tfvars`
 
