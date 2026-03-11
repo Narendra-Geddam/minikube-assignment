@@ -41,7 +41,7 @@ pipeline {
 
     stage('Ansible Configure') {
       steps {
-        withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'ANSIBLE_KEY_FILE', usernameVariable: 'ANSIBLE_USER')]) {
+        withCredentials([sshUserPrivateKey(credentialsId: 'ssh-private-key', keyFileVariable: 'ANSIBLE_KEY_FILE', usernameVariable: 'ANSIBLE_USER')]) {
           dir('ansible') {
             sh 'ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook playbook.yml --private-key "$ANSIBLE_KEY_FILE" -u "$ANSIBLE_USER"'
           }
@@ -51,7 +51,7 @@ pipeline {
 
     stage('Smoke Test') {
       steps {
-        withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'ANSIBLE_KEY_FILE', usernameVariable: 'ANSIBLE_USER')]) {
+        withCredentials([sshUserPrivateKey(credentialsId: 'ssh-private-key', keyFileVariable: 'ANSIBLE_KEY_FILE', usernameVariable: 'ANSIBLE_USER')]) {
           dir('ansible') {
             sh 'ANSIBLE_HOST_KEY_CHECKING=False ansible minikube -m shell -a "kubectl get nodes && helm version --short" --private-key "$ANSIBLE_KEY_FILE" -u "$ANSIBLE_USER"'
           }
