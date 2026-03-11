@@ -4,9 +4,8 @@ regions:
 filters:
   tag:Project: minikube-host
   instance-state-name: running
-keyed_groups:
-  - key: tags.Project
-    prefix: project
+groups:
+  minikube: true
 hostnames:
   - public-ip-address
 compose:
