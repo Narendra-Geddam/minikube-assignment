@@ -1,0 +1,5 @@
+aws_region       = "us-east-1"
+instance_type    = "c7i.large"
+instance_name    = "minikube-control"
+key_name         = "Ansible"
+allowed_ssh_cidr = "0.0.0.0/0"
