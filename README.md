@@ -45,7 +45,7 @@ The `Jenkinsfile` expects:
 - a Jenkins Secret file credential containing the SSH private key
   - ID: `ssh-private-key`
   - Username used by Ansible: `ec2-user`
-- Python 3 and `boto3` installed on the Jenkins agent (for dynamic inventory)
+- Python 3, `boto3`, and Ansible collection `amazon.aws` installed on the Jenkins agent (for dynamic inventory)
 
 The pipeline provisions the instance, uses the Terraform-generated inventory, and then installs Minikube and Helm on the EC2 host.
 
@@ -57,18 +57,12 @@ The pipeline provisions the instance, uses the Terraform-generated inventory, an
 
 ## Dynamic inventory
 
-Ansible uses `ansible/inventory.py` to discover the EC2 instance by tag.
+Ansible uses the `amazon.aws.aws_ec2` inventory plugin via `ansible/aws_ec2.yaml`.
 Defaults:
 
 - Tag filter: `Project=minikube-host`
 - Region: `eu-north-1`
 - User: `ec2-user`
-
-You can override with environment variables:
-
-- `INVENTORY_TAG_KEY` and `INVENTORY_TAG_VALUE`
-- `AWS_REGION` or `AWS_DEFAULT_REGION`
-- `ANSIBLE_USER`
 
 ## Defaults in `infra/terraform.tfvars`
 
