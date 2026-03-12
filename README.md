@@ -52,8 +52,47 @@ The pipeline provisions the instance, uses the Terraform-generated inventory, an
 ## What gets created
 
 - 1 EC2 instance (`c7i-flex.large` by default) in the default VPC
-- 1 security group allowing SSH (22), HTTP (80), HTTPS (443), and NodePort range (30000-32767)
+- 1 security group allowing SSH (22), HTTP (80), HTTPS (443), Kubernetes API (8443), and NodePort range (30000-32767)
 - Ansible inventory file at `infra/inventory.ini`
+
+## Access Minikube from another machine (SSH tunnel)
+
+The Ansible playbook now keeps Minikube's local context healthy and generates a dedicated kubeconfig for SSH tunnel access.
+
+What the playbook does:
+
+1. Starts Minikube with API SANs (`<ec2-public-ip>,127.0.0.1`).
+2. Runs `minikube update-context` on the EC2 host to avoid kubeconfig mismatch.
+3. Generates tunnel kubeconfig (`kubectl config view --raw --flatten --minify`).
+4. Rewrites that kubeconfig server endpoint to `https://127.0.0.1:8443`.
+5. Fetches kubeconfig to `ansible/artifacts/kubeconfig-tunnel-<host-ip>.yaml` on the machine running Ansible.
+
+Where to get kubeconfig:
+
+- Local run: `ansible/artifacts/kubeconfig-tunnel-<host-ip>.yaml` in this repository.
+- Jenkins run: same path inside Jenkins workspace and archived by the pipeline as a build artifact.
+
+Open SSH tunnel (Jenkins master or laptop):
+
+```bash
+MINIKUBE_IP=$(ssh -i <private-key.pem> ec2-user@<ec2-public-ip> "minikube ip")
+ssh -i <private-key.pem> -o ExitOnForwardFailure=yes -N -L 8443:${MINIKUBE_IP}:8443 ec2-user@<ec2-public-ip>
+```
+
+Use tunnel kubeconfig:
+
+```bash
+kubectl --kubeconfig kubeconfig-tunnel-<host-ip>.yaml get nodes
+helm --kubeconfig kubeconfig-tunnel-<host-ip>.yaml list -A
+```
+
+NodePort app access (example `30081`) from another machine:
+
+```bash
+http://<ec2-public-ip>:30081
+```
+
+Ensure EC2 security group allows inbound `30081/tcp` from your source IP.
 
 ## Dynamic inventory
 

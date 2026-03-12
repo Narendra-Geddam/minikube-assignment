@@ -28,7 +28,6 @@
           - git
           - iproute
           - iptables
-          - socat
           - tar
         state: present
         allowerasing: true
@@ -77,67 +76,36 @@
         remote_src: true
         mode: "0755"
 
-    - name: Start Minikube with the Docker driver and public API SAN
+    - name: Start Minikube with the Docker driver and API SANs
       become_user: "{{ target_user }}"
       ansible.builtin.shell: |
-        sg docker -c 'minikube start --driver=docker --memory={{ minikube_memory_mb }} --cpus={{ minikube_cpus }} --apiserver-ips={{ public_api_ip }}'
+        sg docker -c 'minikube start --driver=docker --memory={{ minikube_memory_mb }} --cpus={{ minikube_cpus }} --apiserver-ips={{ public_api_ip }},127.0.0.1'
       args:
         executable: /bin/bash
         chdir: "{{ target_home }}"
 
-    - name: Install API proxy launcher for host port 8443
-      ansible.builtin.copy:
-        dest: /usr/local/bin/minikube-apiserver-proxy.sh
-        mode: "0755"
-        content: |
-          #!/usr/bin/env bash
-          set -euo pipefail
-
-          MK_IP="$(runuser -l {{ target_user }} -c 'minikube ip')"
-          exec socat TCP-LISTEN:{{ api_server_port }},fork,reuseaddr TCP:${MK_IP}:{{ api_server_port }}
-
-    - name: Install systemd service for Minikube API proxy
-      ansible.builtin.copy:
-        dest: /etc/systemd/system/minikube-apiserver-proxy.service
-        mode: "0644"
-        content: |
-          [Unit]
-          Description=Proxy host port {{ api_server_port }} to Minikube API server
-          After=network-online.target docker.service
-          Wants=network-online.target
-
-          [Service]
-          Type=simple
-          ExecStart=/usr/local/bin/minikube-apiserver-proxy.sh
-          Restart=always
-          RestartSec=5
-
-          [Install]
-          WantedBy=multi-user.target
-
-    - name: Enable and restart Minikube API proxy service
-      ansible.builtin.systemd:
-        name: minikube-apiserver-proxy.service
-        daemon_reload: true
-        enabled: true
-        state: restarted
-
-    - name: Update kubeconfig server endpoint to public IP
+    - name: Refresh Minikube context on host
       become_user: "{{ target_user }}"
-      ansible.builtin.replace:
-        path: "{{ target_home }}/.kube/config"
-        regexp: '(^\s*server:\s*)https://.*$'
-        replace: '\1https://{{ public_api_ip }}:{{ api_server_port }}'
+      ansible.builtin.command: minikube update-context
+      args:
+        chdir: "{{ target_home }}"
 
-    - name: Generate portable kubeconfig for remote deployments
+    - name: Generate portable kubeconfig for SSH tunnel usage
       become_user: "{{ target_user }}"
       ansible.builtin.shell: |
-        kubectl config view --raw --flatten --minify > "{{ target_home }}/kubeconfig-public.yaml"
+        kubectl config view --raw --flatten --minify > "{{ target_home }}/kubeconfig-tunnel.yaml"
       args:
         executable: /bin/bash
         chdir: "{{ target_home }}"
       environment:
         KUBECONFIG: "{{ target_home }}/.kube/config"
+
+    - name: Set tunnel kubeconfig server endpoint to localhost
+      become_user: "{{ target_user }}"
+      ansible.builtin.replace:
+        path: "{{ target_home }}/kubeconfig-tunnel.yaml"
+        regexp: '(^\s*server:\s*)https://.*$'
+        replace: '\1https://127.0.0.1:{{ api_server_port }}'
 
     - name: Ensure kubeconfig artifact directory exists on controller
       delegate_to: localhost
@@ -147,11 +115,11 @@
         state: directory
         mode: "0755"
 
-    - name: Fetch generated kubeconfig to controller
+    - name: Fetch generated tunnel kubeconfig to controller
       become: false
       ansible.builtin.fetch:
-        src: "{{ target_home }}/kubeconfig-public.yaml"
-        dest: "{{ playbook_dir }}/artifacts/kubeconfig-{{ inventory_hostname }}.yaml"
+        src: "{{ target_home }}/kubeconfig-tunnel.yaml"
+        dest: "{{ playbook_dir }}/artifacts/kubeconfig-tunnel-{{ inventory_hostname }}.yaml"
         flat: true
 
     - name: Verify kubectl can reach the cluster
