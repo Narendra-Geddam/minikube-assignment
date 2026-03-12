@@ -65,9 +65,8 @@ What the playbook does:
 2. Exposes API port `8443` from EC2 host to Minikube IP via `minikube-apiserver-expose.service`.
 3. Exposes NodePort range `30000-32767` from EC2 host to Minikube IP via `minikube-nodeport-expose.service`.
 4. Runs `minikube update-context` on the EC2 host to avoid kubeconfig mismatch.
-5. Generates and fetches two kubeconfigs:
+5. Generates and fetches one kubeconfig:
    - `kubeconfig-public-<host-ip>.yaml` (server `https://<ec2-public-ip>:8443`)
-   - `kubeconfig-tunnel-<host-ip>.yaml` (server `https://127.0.0.1:8443`, optional fallback)
 
 Where to get kubeconfig:
 

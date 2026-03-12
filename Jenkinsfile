@@ -83,7 +83,7 @@ pipeline {
   post {
     always {
       archiveArtifacts artifacts: 'infra/inventory.ini', allowEmptyArchive: true
-      archiveArtifacts artifacts: 'ansible/artifacts/*.yaml', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'ansible/artifacts/kubeconfig-public-*.yaml', allowEmptyArchive: true
     }
   }
 }

@@ -180,23 +180,6 @@
       args:
         chdir: "{{ target_home }}"
 
-    - name: Generate portable kubeconfig for SSH tunnel usage
-      become_user: "{{ target_user }}"
-      ansible.builtin.shell: |
-        kubectl config view --raw --flatten --minify > "{{ target_home }}/kubeconfig-tunnel.yaml"
-      args:
-        executable: /bin/bash
-        chdir: "{{ target_home }}"
-      environment:
-        KUBECONFIG: "{{ target_home }}/.kube/config"
-
-    - name: Set tunnel kubeconfig server endpoint to localhost
-      become_user: "{{ target_user }}"
-      ansible.builtin.replace:
-        path: "{{ target_home }}/kubeconfig-tunnel.yaml"
-        regexp: '(^\s*server:\s*)https://.*$'
-        replace: '\1https://127.0.0.1:{{ api_server_port }}'
-
     - name: Generate portable kubeconfig for public endpoint usage
       become_user: "{{ target_user }}"
       ansible.builtin.shell: |
@@ -221,13 +204,6 @@
         path: "{{ playbook_dir }}/artifacts"
         state: directory
         mode: "0755"
-
-    - name: Fetch generated tunnel kubeconfig to controller
-      become: false
-      ansible.builtin.fetch:
-        src: "{{ target_home }}/kubeconfig-tunnel.yaml"
-        dest: "{{ playbook_dir }}/artifacts/kubeconfig-tunnel-{{ inventory_hostname }}.yaml"
-        flat: true
 
     - name: Fetch generated public kubeconfig to controller
       become: false

@@ -23,10 +23,9 @@ Implemented behavior:
 2. A systemd service (`minikube-apiserver-expose.service`) exposes API port `8443` on EC2 host.
 3. A systemd service (`minikube-nodeport-expose.service`) exposes NodePort range `30000-32767` on EC2 public interface.
 4. `minikube update-context` is run on EC2 to keep host-side kubectl healthy.
-5. Flattened kubeconfigs are generated:
+5. A flattened kubeconfig is generated:
    - `/home/ec2-user/kubeconfig-public.yaml` (public endpoint)
-   - `/home/ec2-user/kubeconfig-tunnel.yaml` (localhost endpoint)
-6. Both kubeconfigs are fetched to `ansible/artifacts/`.
+6. The kubeconfig is fetched to `ansible/artifacts/kubeconfig-public-<host-ip>.yaml`.
 
 ## Using kubeconfig from another machine
 
