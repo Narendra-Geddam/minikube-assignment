@@ -24,6 +24,7 @@ Implemented behavior:
 3. A flattened kubeconfig is generated at `/home/ec2-user/kubeconfig-tunnel.yaml`.
 4. Tunnel kubeconfig server endpoint is set to `https://127.0.0.1:8443`.
 5. The kubeconfig is fetched to `ansible/artifacts/kubeconfig-tunnel-<host-ip>.yaml`.
+6. A systemd service (`minikube-nodeport-expose.service`) exposes NodePort range `30000-32767` on EC2 public interface.
 
 ## Using kubeconfig from another machine
 
@@ -40,3 +41,13 @@ ssh -i <private-key.pem> -o ExitOnForwardFailure=yes -N -L 8443:${MINIKUBE_IP}:8
 ```bash
 kubectl --kubeconfig kubeconfig-tunnel-<host-ip>.yaml get nodes
 ```
+
+## Access app via public IP (NodePort)
+
+If your service is NodePort `30081`, access it directly from outside:
+
+```text
+http://<ec2-public-ip>:30081
+```
+
+No per-app SSH tunnel is needed for NodePort services after this playbook runs.

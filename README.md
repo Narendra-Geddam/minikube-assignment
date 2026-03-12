@@ -92,7 +92,9 @@ NodePort app access (example `30081`) from another machine:
 http://<ec2-public-ip>:30081
 ```
 
-Ensure EC2 security group allows inbound `30081/tcp` from your source IP.
+This now works without per-port tunneling because Ansible installs `minikube-nodeport-expose.service`, which forwards NodePort range `30000-32767` from EC2 host to Minikube IP.
+
+Ensure EC2 security group allows required NodePort(s) from your source IP.
 
 ## Dynamic inventory
 

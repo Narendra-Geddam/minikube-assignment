@@ -11,6 +11,8 @@
     minikube_memory_mb: 2200
     minikube_cpus: 2
     api_server_port: 8443
+    nodeport_range_start: 30000
+    nodeport_range_end: 32767
     public_api_ip: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
 
   pre_tasks:
@@ -83,6 +85,57 @@
       args:
         executable: /bin/bash
         chdir: "{{ target_home }}"
+
+    - name: Install NodePort exposure script
+      ansible.builtin.copy:
+        dest: /usr/local/bin/minikube-expose-nodeports.sh
+        mode: "0755"
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          START="{{ nodeport_range_start }}"
+          END="{{ nodeport_range_end }}"
+          CHAIN="MINIKUBE_NODEPORT"
+          MK_IP="$(runuser -l {{ target_user }} -c 'minikube ip')"
+
+          iptables -w -t nat -N "${CHAIN}" 2>/dev/null || true
+          iptables -w -t nat -F "${CHAIN}"
+          iptables -w -t nat -A "${CHAIN}" -j DNAT --to-destination "${MK_IP}"
+
+          iptables -w -t nat -C PREROUTING -p tcp --dport "${START}:${END}" -j "${CHAIN}" 2>/dev/null || \
+            iptables -w -t nat -A PREROUTING -p tcp --dport "${START}:${END}" -j "${CHAIN}"
+
+          iptables -w -t nat -C OUTPUT -p tcp -d 127.0.0.1/32 --dport "${START}:${END}" -j "${CHAIN}" 2>/dev/null || \
+            iptables -w -t nat -A OUTPUT -p tcp -d 127.0.0.1/32 --dport "${START}:${END}" -j "${CHAIN}"
+
+          iptables -w -C FORWARD -p tcp --dport "${START}:${END}" -j ACCEPT 2>/dev/null || \
+            iptables -w -A FORWARD -p tcp --dport "${START}:${END}" -j ACCEPT
+
+    - name: Install systemd service for NodePort exposure
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/minikube-nodeport-expose.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Expose Minikube NodePort range on EC2 host interface
+          After=network-online.target docker.service
+          Wants=network-online.target
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/bin/minikube-expose-nodeports.sh
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and run NodePort exposure service
+      ansible.builtin.systemd:
+        name: minikube-nodeport-expose.service
+        daemon_reload: true
+        enabled: true
+        state: started
 
     - name: Refresh Minikube context on host
       become_user: "{{ target_user }}"
